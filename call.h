@@ -218,6 +218,8 @@ bool _argls_add_memv(argls *s, size_t c, ...)
 */
 #define argls_add(al, x) _Generic((x), \
 	void*:		argls_add_integer(al, x), \
+	char*:		argls_add_integer(al, x), \
+	const char*:		argls_add_integer(al, x), \
 	char:		argls_add_integer(al, x), \
 	short:		argls_add_integer(al, x), \
 	int:		argls_add_integer(al, x), \
