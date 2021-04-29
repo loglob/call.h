@@ -25,7 +25,9 @@ After initializing an argument list, arguments can be appended to it by calling 
 The simplest way of adding an argument is `argls_add()` which uses a generic to attempt to find the correct argument class automatically for most primitive types.
 Note that pointers should be cast to `void*` to use this macro.
 
-If the argument class of an argument is known, one of `argls_add_memory()`, `argls_add_integer()` or `argls_add_sse()` can be used.
+If the argument class of an argument is known, one of `argls_add_memory()`, `argls_add_memv()`, `argls_add_integer()` or `argls_add_sse()` can be used.
+
+Note that `argls_add_memory()` takes the address of an object and `argls_add_memv()` assumes that the object is already in the memory class and copies data from its own argument list.
 
 All of these macros return a boolean, with false indicated error due to malloc failure when expansing the stack.
 

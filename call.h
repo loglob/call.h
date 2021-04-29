@@ -153,6 +153,7 @@ bool _argls_add_memv(argls *s, size_t c, ...)
 	return true;
 }
 
+#define argls_add_memv(al, x) _argls_add_memv(&al, sizeof(x) / 8 + (sizeof(x) % 8 > 0), x)
 #define argls_add_memory(al, x) _argls_add_memory(&al, sizeof(x) / 8 + (sizeof(x) % 8 > 0), (int64_t*)&x)
 #define argls_add_integer(al, x) _argls_add_integer(&(al), (int64_t)(x))
 #define argls_add_sse(al, x) _argls_add_sse(&al, sizeof(x), x)
