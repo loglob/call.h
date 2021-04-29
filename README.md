@@ -2,7 +2,13 @@
 Single-header dynamic function invocation in C
 
 ## How to include
-Simply clone this repo into a subfolder and include `call.h`.
+Simply clone this repo or copy `call.h` and include it.
+
+This can be achieved with a make rule like this:
+```
+call.h:
+	wget https://raw.githubusercontent.com/loglob/call.h/main/call.h
+```
 
 ## How to use
 ### Prerequisites
