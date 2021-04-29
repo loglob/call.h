@@ -31,7 +31,7 @@ typedef struct
 	size_t regc : 3;
 	// The amount of xmm registers used
 	size_t xregc : 4; 
-	// The amount of stack eightbytes. _technically_ 4 bits too short
+	// The amount of stack eightbytes.
 	size_t stackc : 57;
 }
 #ifndef DYNAMIC_REGS
@@ -39,12 +39,17 @@ __attribute__((aligned(16)))
 #endif
 argls;
 
-// Expands the stack of s to fit c additional eightbytes
+__nonnull((1))
+/** Expands the stack of s to fit c additional eightbytes
+ * @param s Reference to the argument list
+ * @param c The additional eightbytes to add
+ * @returns false on malloc failure, true otherwise
+*/
 bool _argls_exp_stack(argls *s, size_t c)
 {
 	if(((s->stackc + c) & ~s->stackc) > s->stackc)
 	{
-		// resize
+		// new capacity
 		size_t cap = 1L;
 
 		while(cap <= s->stackc + c)
@@ -62,7 +67,13 @@ bool _argls_exp_stack(argls *s, size_t c)
 	return true;
 }
 
-// Adds a MEMORY class argument
+__nonnull((1,3))
+/** Adds a MEMORY class argument from a pointer
+ * @param s Reference to the argument list
+ * @param c The amount of eightbytes to add
+ * @param vals The argument values, in argument order (from left to right)
+ * @returns false on malloc failure, true otherwise
+*/
 bool _argls_add_memory(argls *s, size_t c, int64_t vals[c])
 {
 	if(!_argls_exp_stack(s, c))
@@ -75,6 +86,13 @@ bool _argls_add_memory(argls *s, size_t c, int64_t vals[c])
 }
 
 // Adds an INTEGER class argument
+
+__nonnull((1))
+/** Adds an INTEGER class argument
+ * @param s Reference to the argument list
+ * @param v The argument value
+ * @returns false on malloc failure, true otherwise
+*/
 bool _argls_add_integer(argls *s, int64_t v)
 {
 #ifdef DYNAMIC_REGS
@@ -91,7 +109,13 @@ bool _argls_add_integer(argls *s, int64_t v)
 	}
 }
 
-// Adds SSE or SSEUP class argument(s), siz bytes in size.
+__nonnull((1))
+/** Adds SSE or SSEUP class argument(s), siz bytes in size. 
+ * @param s	Reference to the argument list
+ * @param siz The amount of eightbytes to add. Technically limited to 16, as stack isn't checked for arguments
+ * @param ... The argument values, which should have the proper type (i.e. are SSE/SSEUP)
+ * @returns false on malloc failure, true otherwise
+*/
 bool _argls_add_sse(argls *s, size_t siz, ...)
 {
 #ifdef DYNAMIC_REGS
@@ -129,7 +153,13 @@ bool _argls_add_sse(argls *s, size_t siz, ...)
 		return true;
 }
 
-// Acts like _argls_add_memory but reads c longs from variadic args.
+__nonnull((1))
+/** Acts like _argls_add_memory but reads its paramters directly from stack.
+ * @param s	Reference to the argument list
+ * @param c The amount of eightbytes to add
+ * @param ... The values, which should have the proper type (i.e. are MEMORY)
+ * @returns false on malloc failure, true otherwise
+*/
 bool _argls_add_memv(argls *s, size_t c, ...)
 {
 	if(!_argls_exp_stack(s, c))
@@ -153,11 +183,39 @@ bool _argls_add_memv(argls *s, size_t c, ...)
 	return true;
 }
 
+/** Adds a MEMORY-class argument from a MEMORY-class value
+ * @param al The argument list
+ * @param x The value
+ * @returns false on malloc failure, true otherwise
+*/
 #define argls_add_memv(al, x) _argls_add_memv(&al, sizeof(x) / 8 + (sizeof(x) % 8 > 0), x)
+
+/** Adds a MEMORY-class argument from an addressable value
+ * @param al The argument list
+ * @param x The value, needs to be addressable
+ * @returns false on malloc failure, true otherwise
+*/
 #define argls_add_memory(al, x) _argls_add_memory(&al, sizeof(x) / 8 + (sizeof(x) % 8 > 0), (int64_t*)&x)
+
+/** Adds an INTEGER-class argument
+ * @param al The argument list
+ * @param x The value
+ * @returns false on malloc failure, true otherwise
+*/
 #define argls_add_integer(al, x) _argls_add_integer(&(al), (int64_t)(x))
+
+/** Adds an SSE or SSEUP-class argument
+ * @param al The argument list
+ * @param x The value
+ * @returns false on malloc failure, true otherwise
+*/
 #define argls_add_sse(al, x) _argls_add_sse(&al, sizeof(x), x)
 
+/** Adds a primitive argument
+ * @param al The argument list
+ * @param x The value
+ * @returns false on malloc failure, true otherwise
+*/
 #define argls_add(al, x) _Generic((x), \
 	void*:		argls_add_integer(al, x), \
 	char:		argls_add_integer(al, x), \
@@ -179,6 +237,10 @@ bool _argls_add_memv(argls *s, size_t c, ...)
 	long double:	_argls_add_memv(&al, 2, x) \
 )
 
+/** Invokes a function with the given argument list.
+ * @param func Address of the function
+ * @param s The argument list
+*/
 void call(void *func, argls s)
 {
 	// prevent type mismatch
@@ -193,7 +255,6 @@ void call(void *func, argls s)
 		"sub %[xregco], %%rax\n\t"
 		"jmp *%%rax\n\t"
 		// switch case over xregc (8..0)
-		// These SHOULD be encoded as 41 0f 28 ?? ?0 but I've had a few problems with that
 		"movaps 112(%%rbx), %%xmm7\n\t"
 		"movaps 96(%%rbx), %%xmm6\n\t"
 		"movaps 80(%%rbx), %%xmm5\n\t"
@@ -265,6 +326,9 @@ void call(void *func, argls s)
 	);
 }
 
+/** Destroys an argument list.
+ * @param s The argument list
+*/
 void argls_end(argls s)
 {
 #ifdef DYNAMIC_REGS
@@ -275,6 +339,9 @@ void argls_end(argls s)
 	free(s.stack);
 }
 
+/** Prints an argument list for debugging
+ * @param s The argument list
+*/
 void argls_print(argls s)
 {
 	printf("%hhu general purpose registers\n", s.regc);
